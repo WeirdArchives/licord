@@ -3,8 +3,8 @@ An almost dependency-less, synchronous Discord gateway library meant for my pers
 
 # Installation
 ```
-pip install git+https://github.com/oliver-ni/erlpack
-pip install git+https://github.com/h0nde/licord
+pip install -U git+https://github.com/oliver-ni/erlpack
+pip install -U git+https://github.com/h0nde/licord
 ```
 
 # Usage
@@ -15,5 +15,5 @@ gateway = Gateway(token=find_token())
 
 while True:
     payload = gateway.recv()
-    print(payload)
+    print(payload["op"], payload["d"])
 ```
