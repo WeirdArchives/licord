@@ -5,8 +5,7 @@ USER_AGENT_TEMPLATE = ("Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 
 PROXY_CONNECT_REQUEST = (
     "CONNECT gateway.discord.gg:443 HTTP/1.1\r\n"
     "{headers}"
-    "\r\n"
-)
+    "\r\n")
 GATEWAY_UPGRADE_REQUEST = (
     "GET /?encoding=etf&v=9&compress=zlib-stream HTTP/1.1\r\n"
     "Host: gateway.discord.gg\r\n"
