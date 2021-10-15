@@ -182,7 +182,6 @@ class Gateway:
             self._sock.connect(proxy_addr)
             self._sock.sendall(PROXY_CONNECT_REQUEST\
                 .format(
-                    address=("gateway.discord.gg", 443),
                     headers=f"Proxy-Authorization: {proxy_auth}\r\n" \
                             if proxy_auth else "")
                 .encode())

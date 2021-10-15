@@ -3,7 +3,7 @@ USER_AGENT_TEMPLATE = ("Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 
                        "Electron/13.4.0 Safari/537.36")
 
 PROXY_CONNECT_REQUEST = (
-    "CONNECT {address[0]}:{address[1]} HTTP/1.1\r\n"
+    "CONNECT gateway.discord.gg:443 HTTP/1.1\r\n"
     "{headers}"
     "\r\n"
 )
