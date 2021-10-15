@@ -78,9 +78,9 @@ class Gateway:
     def recv(self):
         try:
             buf = None
-            buf = self._sock.recv(1048576)[1:]
-            data_length = buf[0] & 0x7f
-            buf = buf[1:]
+            buf = self._sock.recv(1048576)
+            data_length = buf[1] & 0x7f
+            buf = buf[2:]
             
             if data_length == 126:
                 data_length = int.from_bytes(buf[:2], "big")
