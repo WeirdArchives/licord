@@ -15,5 +15,5 @@ gateway = Gateway(token=find_token())
 
 while True:
     payload = gateway.recv()
-    print(payload)
+    print(payload["op"], payload["d"])
 ```
