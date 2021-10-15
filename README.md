@@ -3,8 +3,8 @@ An almost dependency-less, synchronous Discord gateway library meant for my pers
 
 # Installation
 ```
-pip install git+https://github.com/oliver-ni/erlpack
-pip install git+https://github.com/h0nde/licord
+pip install -U git+https://github.com/oliver-ni/erlpack
+pip install -U git+https://github.com/h0nde/licord
 ```
 
 # Usage
