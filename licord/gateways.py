@@ -112,6 +112,11 @@ class Gateway:
             ):
             self._last_sq_num = payload["s"]
 
+        if payload.get("op") == 9:
+            logging.info("Opcode 9 raised")
+            self._connect()
+            return self.recv()
+
         return payload
 
     def _authenticate(self):
