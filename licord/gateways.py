@@ -70,6 +70,7 @@ class Gateway:
         
         try:
             self._sock.sendall(header + key + masked_data)
+            
         except Exception as err:
             logging.warn(f"Error while sending: {err!r}")
             self._connect()
