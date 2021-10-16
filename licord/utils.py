@@ -13,6 +13,9 @@ def create_ssl_context():
     return ctx
 
 def parse_proxy_string(proxy_str):
+    if not proxy_str:
+        return
+        
     proxy_str = proxy_str.rpartition("://")[2]
     auth, _, fields = proxy_str.rpartition("@")
     fields = fields.split(":", 2)

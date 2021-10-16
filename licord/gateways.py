@@ -24,7 +24,7 @@ class Gateway:
         self.read_timeout = read_timeout
         self.reconnect_delay = reconnect_delay
 
-        self._http_proxy = http_proxy and parse_proxy_string(http_proxy)
+        self._http_proxy = parse_proxy_string(http_proxy)
         self._zlib_inflator = None
         self._ack_interval = None
         self._ack_thread = None
@@ -51,16 +51,17 @@ class Gateway:
             self._sock.close()
 
     def send(self, data):
-        if not isinstance(data, bytes):
-            data = erlpack.pack(data)
-    
-        key = urandom(4)
+        data = erlpack.pack(data)
         length = len(data)
+        header = b"\x82"
+        
+        # Mask payload.
+        key = urandom(4)
         masked_data = bytes(
             data[i] ^ key[i % 4]
             for i in range(length))
-        header = b"\x82"
-
+        
+        # Include payload length in frame header.
         if length < 126:
             header += bytes([length + 128])
         elif length < 65536:
@@ -72,6 +73,7 @@ class Gateway:
             self._sock.sendall(header + key + masked_data)
 
         except Exception as err:
+            # Retry sending data.
             logging.warn(f"Error while sending: {err!r}")
             self._connect()
             return self.send(data)
@@ -83,19 +85,23 @@ class Gateway:
             data_length = buf[1] & 0x7f
             buf = buf[2:]
             
-            if data_length == 126:
-                data_length = int.from_bytes(buf[:2], "big")
-                buf = buf[2:]
+            match data_length:
+                case 126:
+                    data_length = int.from_bytes(buf[:2], "big")
+                    buf = buf[2:]
 
             while len(buf) < data_length:
                 ch = self._sock.recv(data_length - len(buf))
                 buf += ch
 
             if buf.endswith(b"\x00\x00\xff\xff"):
+                # Payload is zlib compressed.
                 buf = self._zlib_inflator.decompress(buf)
 
-            if buf == b"\x0f\xa4Authentication failed.":
-                raise AuthenticationFailed()
+            # Match against known error messages.
+            match buf:
+                case b"\x0f\xa4Authentication failed.":
+                    raise AuthenticationFailed()
 
             payload = erlpack.unpack(buf)
 
@@ -103,6 +109,7 @@ class Gateway:
             raise
             
         except Exception as err:
+            # Retry receiving data.
             logging.warn(f"Error while receiving: {err!r} (Buf: {buf and buf[:1024]}")
             self._connect()
             return self.recv()
@@ -111,47 +118,17 @@ class Gateway:
                 not self._last_sq_num
                 or payload["s"] > self._last_sq_num
             ):
+            # Save sequence number, as it is required for ACK.
             self._last_sq_num = payload["s"]
-
-        if payload.get("op") == 9:
-            logging.info("Opcode 9 raised")
-            self._connect()
-            return self.recv()
+        
+        # https://discord.com/developers/docs/topics/opcodes-and-status-codes
+        match payload.get("op"):
+            case 9:
+                logging.info("Opcode 9 raised.")
+                self._connect()
+                return self.recv()
 
         return payload
-
-    def _authenticate(self):
-        self.send({
-            "op": 2,
-            "d": {
-                "token": self.token,
-                "capabilities": 125,
-                "properties": {
-                    "os": "Windows",
-                    "browser": "Discord Client",
-                    "release_channel": "stable",
-                    "client_version": self.agent.client_version,
-                    "os_version": self.agent.os_version,
-                    "os_arch": "x64",
-                    "system_locale": "en-US",
-                    "client_build_number": self.agent.client_build_num,
-                    "client_event_source": None
-                },
-                "presence": {
-                    "status": "online",
-                    "since": 0,
-                    "activities": [],
-                    "afk": False
-                },
-                "compress": False,
-                "client_state": {
-                    "guild_hashes": {},
-                    "highest_last_message_id": "0",
-                    "read_state_version": 0,
-                    "user_guild_settings_version": -1
-                }
-            }
-        })
 
     def _ack_sender(self):
         time.sleep(self._ack_interval)
@@ -164,6 +141,7 @@ class Gateway:
 
     def _connect(self):
         if self._sock:
+            # Close previous session.
             try:
                 self._sock.shutdown(2)
             except OSError:
@@ -220,4 +198,37 @@ class Gateway:
             self._ack_thread.start()
 
         self._sock.settimeout(self.read_timeout)
-        self._authenticate()
+        self._identify()
+
+    def _identify(self):
+        self.send({
+            "op": 2,
+            "d": {
+                "token": self.token,
+                "capabilities": 125,
+                "properties": {
+                    "os": "Windows",
+                    "browser": "Discord Client",
+                    "release_channel": "stable",
+                    "client_version": self.agent.client_version,
+                    "os_version": self.agent.os_version,
+                    "os_arch": "x64",
+                    "system_locale": "en-US",
+                    "client_build_number": self.agent.client_build_num,
+                    "client_event_source": None
+                },
+                "presence": {
+                    "status": "online",
+                    "since": 0,
+                    "activities": [],
+                    "afk": False
+                },
+                "compress": False,
+                "client_state": {
+                    "guild_hashes": {},
+                    "highest_last_message_id": "0",
+                    "read_state_version": 0,
+                    "user_guild_settings_version": -1
+                }
+            }
+        })
