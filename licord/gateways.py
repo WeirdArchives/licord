@@ -1,7 +1,7 @@
 from .constants import PROXY_CONNECT_REQUEST, GATEWAY_UPGRADE_REQUEST
 from .utils import parse_proxy_string, create_ssl_context
 from .exceptions import *
-from .agents import Agent
+from .agents import get_latest_windows_client_agent
 from base64 import b64encode
 from os import urandom
 import threading
@@ -15,7 +15,7 @@ class Gateway:
     _ssl_context = create_ssl_context()
 
     def __init__(self,
-                 token, agent=Agent(),
+                 token, agent=get_latest_windows_client_agent(),
                  connect_timeout=5, read_timeout=60,
                  reconnect_delay=2, http_proxy=None):
         self.token = token
