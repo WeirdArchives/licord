@@ -8,9 +8,9 @@ while True:
         case "MESSAGE_CREATE":
             print(f"{payload['d'][b'author'][b'username'].decode()}"
                   f"#{payload['d'][b'author'][b'discriminator'].decode()}: "
-                  f"{payload['d'][b'content'].decode()}")
+                  f"{payload['d'].get(b'content', b'').decode()}")
                 
         case "MESSAGE_UPDATE":
             print(f"{payload['d'][b'author'][b'username'].decode()}"
                   f"#{payload['d'][b'author'][b'discriminator'].decode()} (edit): "
-                  f"{payload['d'][b'content'].decode()}")
+                  f"{payload['d'].get(b'content', b'').decode()}")
