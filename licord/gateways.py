@@ -102,7 +102,7 @@ class Gateway:
                     case 4004:
                         raise AuthenticationFailed()
                     case _:
-                        logging.warn(f"Unrecognized error message: {buf[2:]}")
+                        logging.warn(f"Unrecognized close message: {buf[2:]}")
                         self._connect()
                         return self.recv()
             
