@@ -23,8 +23,8 @@ class Gateway:
         self.connect_timeout = connect_timeout
         self.read_timeout = read_timeout
         self.reconnect_delay = reconnect_delay
-        self.http_proxy = http_proxy
 
+        self._http_proxy = http_proxy and parse_proxy_string(http_proxy)
         self._zlib_inflator = None
         self._ack_interval = None
         self._ack_thread = None
@@ -70,7 +70,7 @@ class Gateway:
         
         try:
             self._sock.sendall(header + key + masked_data)
-            
+
         except Exception as err:
             logging.warn(f"Error while sending: {err!r}")
             self._connect()
@@ -179,12 +179,12 @@ class Gateway:
         self._sock = socket.socket()
         self._sock.settimeout(self.connect_timeout)
 
-        if not self.http_proxy:
+        if not self._http_proxy:
             # Connect socket to gateway.
             self._sock.connect(("gateway.discord.gg", 443))
         else:
             # Connect socket to gateway through proxy tunnel.
-            proxy_auth, proxy_addr = parse_proxy_string(self.http_proxy)
+            proxy_auth, proxy_addr = self._http_proxy
             self._sock.connect(proxy_addr)
             self._sock.sendall(PROXY_CONNECT_REQUEST\
                 .format(
@@ -192,7 +192,7 @@ class Gateway:
                             if proxy_auth else "")
                 .encode())
             if self._sock.recv(4096).split(b" ", 2)[1] != b"200":
-                raise Exception("Couldn't connect to HTTP proxy")
+                raise Exception("HTTP proxy refused CONNECT request.")
 
         # Add SSL encryption to connection.
         self._sock = self._ssl_context.wrap_socket(
@@ -211,7 +211,7 @@ class Gateway:
             .encode())
         self._sock.recv(4096)
 
-        # Wait for ACK payload and start thread.
+        # Wait for ACK Hello payload and start thread.
         while (payload := self.recv())["op"] != 10:
             pass
         self._ack_interval = payload["d"]["heartbeat_interval"]/1000
