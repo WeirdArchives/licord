@@ -110,7 +110,7 @@ class Gateway:
             
         except Exception as err:
             # Retry receiving data.
-            logging.warn(f"Error while receiving: {err!r} (Buf: {buf and buf[:1024]}")
+            logging.warn(f"Error while receiving: {err!r} (Buf: {buf and buf[:1024]})")
             self._connect()
             return self.recv()
 
@@ -175,6 +175,7 @@ class Gateway:
         # Add SSL encryption to connection.
         self._sock = self._ssl_context.wrap_socket(
             sock=self._sock,
+            server_side=False,
             do_handshake_on_connect=False,
             suppress_ragged_eofs=False,
             server_hostname="gateway.discord.gg")
