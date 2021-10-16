@@ -80,8 +80,8 @@ class Gateway:
 
     def recv(self):
         try:
-            buf = None
             buf = self._sock.recv(1048576)
+            data_opcode = buf[0] & 0xf
             data_length = buf[1] & 0x7f
             buf = buf[2:]
             
@@ -89,46 +89,56 @@ class Gateway:
                 case 126:
                     data_length = int.from_bytes(buf[:2], "big")
                     buf = buf[2:]
+                case 127:
+                    data_length = int.from_bytes(buf[:8], "big")
+                    buf = buf[8:]
 
             while len(buf) < data_length:
-                ch = self._sock.recv(data_length - len(buf))
-                buf += ch
+                buf += self._sock.recv(data_length - len(buf))
 
+            if data_opcode == 8:
+                # Match against known error messages.
+                match int.from_bytes(buf[:2], "big"):
+                    case 4004:
+                        raise AuthenticationFailed()
+                    case _:
+                        logging.warn(f"Unrecognized error message: {buf[2:]}")
+                        self._connect()
+                        return self.recv()
+            
+            if data_opcode != 2:
+                logging.warn(f"Received frame with unrecognized opcode {data_opcode}: {buf[:1024]}")
+                self._connect()
+                return self.recv()
+            
             if buf.endswith(b"\x00\x00\xff\xff"):
                 # Payload is zlib compressed.
                 buf = self._zlib_inflator.decompress(buf)
 
-            # Match against known error messages.
-            match buf:
-                case b"\x0f\xa4Authentication failed.":
-                    raise AuthenticationFailed()
-
             payload = erlpack.unpack(buf)
+
+            if payload.get("s") and (not self._last_sq_num\
+                                     or payload["s"] > self._last_sq_num):
+                # Save sequence number, as it is required for ACK.
+                self._last_sq_num = payload["s"]
+            
+            # https://discord.com/developers/docs/topics/opcodes-and-status-codes
+            match payload.get("op"):
+                case 9:
+                    logging.info("Opcode 9 raised.")
+                    self._connect()
+                    return self.recv()
+
+            return payload
 
         except LicordError:
             raise
             
         except Exception as err:
             # Retry receiving data.
-            logging.warn(f"Error while receiving: {err!r} (Buf: {buf and buf[:1024]})")
+            logging.warn(f"Error while receiving: {err!r}")
             self._connect()
             return self.recv()
-
-        if payload.get("s") and (
-                not self._last_sq_num
-                or payload["s"] > self._last_sq_num
-            ):
-            # Save sequence number, as it is required for ACK.
-            self._last_sq_num = payload["s"]
-        
-        # https://discord.com/developers/docs/topics/opcodes-and-status-codes
-        match payload.get("op"):
-            case 9:
-                logging.info("Opcode 9 raised.")
-                self._connect()
-                return self.recv()
-
-        return payload
 
     def _ack_sender(self):
         time.sleep(self._ack_interval)

