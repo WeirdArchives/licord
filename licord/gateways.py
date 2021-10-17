@@ -106,12 +106,14 @@ class Gateway:
                             logging.warn(f"Unrecognized close message: {buf[2:]}")
                             self._connect()
                             return self.recv()
-                
+
+                case 2:
+                    pass
+
                 case _:
-                    if data_opcode != 2:
-                        logging.warn(f"Received frame with unrecognized opcode {data_opcode}: {buf[:1024]}")
-                        self._connect()
-                        return self.recv()
+                    logging.warn(f"Received frame with unrecognized opcode {data_opcode}: {buf[:1024]}")
+                    self._connect()
+                    return self.recv()
             
             if buf.endswith(b"\x00\x00\xff\xff"):
                 # Payload is zlib compressed.
