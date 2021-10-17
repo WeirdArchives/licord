@@ -96,20 +96,22 @@ class Gateway:
             while len(buf) < data_length:
                 buf += self._sock.recv(data_length - len(buf))
 
-            if data_opcode == 8:
-                # Match against known error messages.
-                match int.from_bytes(buf[:2], "big"):
-                    case 4004:
-                        raise AuthenticationFailed()
-                    case _:
-                        logging.warn(f"Unrecognized close message: {buf[2:]}")
+            match data_opcode:
+                case 8:
+                    # Match against known error messages.
+                    match int.from_bytes(buf[:2], "big"):
+                        case 4004:
+                            raise AuthenticationFailed()
+                        case _:
+                            logging.warn(f"Unrecognized close message: {buf[2:]}")
+                            self._connect()
+                            return self.recv()
+                
+                case _:
+                    if data_opcode != 2:
+                        logging.warn(f"Received frame with unrecognized opcode {data_opcode}: {buf[:1024]}")
                         self._connect()
                         return self.recv()
-            
-            if data_opcode != 2:
-                logging.warn(f"Received frame with unrecognized opcode {data_opcode}: {buf[:1024]}")
-                self._connect()
-                return self.recv()
             
             if buf.endswith(b"\x00\x00\xff\xff"):
                 # Payload is zlib compressed.
