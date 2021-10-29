@@ -85,36 +85,32 @@ class Gateway:
             data_length = buf[1] & 0x7f
             buf = buf[2:]
             
-            match data_length:
-                case 126:
-                    data_length = int.from_bytes(buf[:2], "big")
-                    buf = buf[2:]
-                case 127:
-                    data_length = int.from_bytes(buf[:8], "big")
-                    buf = buf[8:]
+            if data_length == 126:
+                data_length = int.from_bytes(buf[:2], "big")
+                buf = buf[2:]
+            elif data_length == 127:
+                data_length = int.from_bytes(buf[:8], "big")
+                buf = buf[8:]
 
             while len(buf) < data_length:
                 buf += self._sock.recv(data_length - len(buf))
 
-            match data_opcode:
-                case 8:
-                    # Match against known error messages.
-                    match int.from_bytes(buf[:2], "big"):
-                        case 4004:
-                            raise AuthenticationFailed()
-                        case _:
-                            logging.warn(f"Unrecognized close message: {buf[2:]}")
-                            self._connect()
-                            return self.recv()
-
-                case 2:
-                    pass
-
-                case _:
-                    logging.warn(f"Received frame with unrecognized opcode {data_opcode}: {buf[:1024]}")
+            if data_opcode == 8:
+                # Match against known error messages.
+                close_code = int.from_bytes(buf[:2], "big")
+                if close_code == 4004:
+                    raise AuthenticationFailed()
+                else:
+                    logging.warn(f"Unrecognized close message: {buf[2:]}")
                     self._connect()
                     return self.recv()
-            
+            elif data_opcode == 2:
+                pass
+            else:
+                logging.warn(f"Received frame with unrecognized opcode {data_opcode}: {buf[:1024]}")
+                self._connect()
+                return self.recv()
+        
             if buf.endswith(b"\x00\x00\xff\xff"):
                 # Payload is zlib compressed.
                 buf = self._zlib_inflator.decompress(buf)
@@ -127,11 +123,10 @@ class Gateway:
                 self._last_sq_num = payload["s"]
             
             # https://discord.com/developers/docs/topics/opcodes-and-status-codes
-            match payload.get("op"):
-                case 9:
-                    logging.info("Opcode 9 raised.")
-                    self._connect()
-                    return self.recv()
+            if payload.get("op") == 9:
+                logging.info("Opcode 9 raised.")
+                self._connect()
+                return self.recv()
 
             return payload
 
